@@ -1,21 +1,19 @@
-import Home from "./components/Home"
-import Login from "./components/Login"
-import Signup from "./components/Signup"
-import { BrowserRouter as Router, Routes, Route } from "react-router-dom";
-import { useState } from 'react';
+import React from "react";
+import { BrowserRouter as Router, Route, Routes } from "react-router-dom";
+import Login from "./components/Login";
+import Register from "./components/Register";
+import Dashboard from "./components/Dashboard";
 
-function App() {
+const App: React.FC = () => {
   return (
-    <div className="App">
-      <Router>
-        <Routes>
-          <Route path="/" element={<Login/>}/>
-          <Route path="/signup" element={<Signup/>}/>
-          <Route path="/home" element={<Home/>}/>
-        </Routes>
-      </Router>
-    </div>
+    <Router>
+      <Routes>
+        <Route path="/" element={<Login />} />
+        <Route path="/register" element={<Register />} />
+        <Route path="/dashboard" element={<Dashboard />} />
+      </Routes>
+    </Router>
   );
-}
+};
 
 export default App;
