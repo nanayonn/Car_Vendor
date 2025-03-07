@@ -12,13 +12,13 @@ var __importDefault = (this && this.__importDefault) || function (mod) {
     return (mod && mod.__esModule) ? mod : { "default": mod };
 };
 Object.defineProperty(exports, "__esModule", { value: true });
-// backend/src/index.ts
 const express_1 = __importDefault(require("express"));
-const sqlite3_1 = __importDefault(require("sqlite3"));
-const sqlite_1 = require("sqlite");
+const mongoose_1 = __importDefault(require("mongoose"));
 const bcrypt_1 = __importDefault(require("bcrypt"));
 const cors_1 = __importDefault(require("cors"));
 const express_session_1 = __importDefault(require("express-session"));
+const dotenv_1 = __importDefault(require("dotenv"));
+dotenv_1.default.config();
 const app = (0, express_1.default)();
 const PORT = 5000;
 app.use(express_1.default.json());
@@ -28,55 +28,127 @@ app.use((0, express_session_1.default)({
     resave: false,
     saveUninitialized: true,
 }));
-const dbPromise = (0, sqlite_1.open)({
-    filename: "database.sqlite3",
-    driver: sqlite3_1.default.Database,
+// Connect to MongoDB
+mongoose_1.default
+    .connect(process.env.MONGO_URI)
+    .then(() => console.log("MongoDB Connected"))
+    .catch((err) => console.error("MongoDB connection error:", err));
+// Define User Schema
+const userSchema = new mongoose_1.default.Schema({
+    username: { type: String, unique: true, required: true },
+    password: { type: String, required: true },
+    email: { type: String, required: true },
+    address: { type: String, default: null },
+    province: { type: String, default: null },
 });
-(() => __awaiter(void 0, void 0, void 0, function* () {
-    const db = yield dbPromise;
-    yield db.exec(`
-    CREATE TABLE IF NOT EXISTS users (
-      id INTEGER PRIMARY KEY AUTOINCREMENT,
-      username TEXT UNIQUE NOT NULL,
-      password TEXT NOT NULL
-    )
-  `);
-}))();
+const User = mongoose_1.default.model("User", userSchema);
+// Register User
 app.post("/register", (req, res) => __awaiter(void 0, void 0, void 0, function* () {
-    const { username, password } = req.body;
-    console.log("Request Body:", req.body); // Log the request body for debugging
-    if (!username || !password) {
-        res.status(400).json({ success: false, message: "Username and password are required" });
+    const { username, password, email, address, province } = req.body;
+    if (!username || !password || !email) {
+        res
+            .status(400)
+            .json({ success: false, message: "Username, password, and email are required" });
     }
-    const db = yield dbPromise;
-    const hashedPassword = yield bcrypt_1.default.hash(password, 10);
     try {
-        yield db.run("INSERT INTO users (username, password) VALUES (?, ?)", [username, hashedPassword]);
+        const hashedPassword = yield bcrypt_1.default.hash(password, 10);
+        const newUser = new User({ username, password: hashedPassword, email, address, province });
+        yield newUser.save();
         res.json({ success: true });
     }
     catch (err) {
         res.status(400).json({ success: false, message: "User already exists" });
     }
 }));
+// Login User
 app.post("/login", (req, res) => __awaiter(void 0, void 0, void 0, function* () {
     const { username, password } = req.body;
-    const db = yield dbPromise;
-    console.log("Database connected");
-    const user = yield db.get("SELECT * FROM users WHERE username = ?", [username]);
-    if (user && (yield bcrypt_1.default.compare(password, user.password))) {
-        req.session.user = { id: user.id, username: user.username };
-        res.json({ success: true });
+    try {
+        const user = yield User.findOne({ username });
+        if (user && (yield bcrypt_1.default.compare(password, user.password))) {
+            req.session.user = { id: user._id.toString(), username: user.username };
+            res.json({ success: true });
+        }
+        else {
+            res.status(401).json({ success: false, message: "Invalid credentials" });
+        }
     }
-    else {
-        res.status(401).json({ success: false, message: "Invalid credentials" });
+    catch (err) {
+        res.status(500).json({ success: false, message: "Server error" });
     }
 }));
-app.get("/dashboard", (req, res) => {
+// Dashboard Access
+app.get("/dashboard", (req, res) => __awaiter(void 0, void 0, void 0, function* () {
     if (req.session.user) {
-        res.json({ success: true, user: req.session.user });
+        try {
+            const user = yield User.findById(req.session.user.id).select("username email address province");
+            if (user) {
+                res.json({ success: true, user });
+            }
+            else {
+                res.status(404).json({ success: false, message: "User not found" });
+            }
+        }
+        catch (err) {
+            res.status(500).json({ success: false, message: "Server error" });
+        }
     }
     else {
         res.status(401).json({ success: false, message: "Unauthorized" });
     }
-});
+}));
+// Update Profile (Email, Address, Province) and Credentials (Username, Password)
+app.put("/update-profile", (req, res) => __awaiter(void 0, void 0, void 0, function* () {
+    if (!req.session.user) {
+        res.status(401).json({ success: false, message: "Unauthorized" });
+        return;
+    }
+    const { email, address, province, newUsername, newPassword, oldPassword } = req.body;
+    try {
+        const user = yield User.findById(req.session.user.id);
+        if (!user) {
+            res.status(404).json({ success: false, message: "User not found" });
+            return;
+        }
+        // Update Profile Information (Email, Address, Province) only if provided
+        if (email !== undefined)
+            user.email = email !== null ? email : user.email;
+        if (address !== undefined)
+            user.address = address !== null ? address : user.address;
+        if (province !== undefined)
+            user.province = province !== null ? province : user.province;
+        // Update Credentials (Username and Password) only if provided
+        if (newUsername || newPassword) {
+            // If changing the password, validate the old password
+            if (newPassword) {
+                const isOldPasswordValid = yield bcrypt_1.default.compare(oldPassword, user.password);
+                if (!isOldPasswordValid) {
+                    res.status(400).json({ success: false, message: "Incorrect old password" });
+                    return;
+                }
+                // Hash the new password before saving
+                const hashedNewPassword = yield bcrypt_1.default.hash(newPassword, 10);
+                user.password = hashedNewPassword;
+            }
+            // If changing the username, check if it's already taken
+            if (newUsername) {
+                const existingUser = yield User.findOne({ username: newUsername });
+                if (existingUser) {
+                    res.status(400).json({ success: false, message: "Username already taken" });
+                    return;
+                }
+                user.username = newUsername;
+            }
+        }
+        // Save the updated user details
+        yield user.save();
+        res.json({ success: true, message: "Profile and credentials updated successfully" });
+        return;
+    }
+    catch (err) {
+        res.status(500).json({ success: false, message: "Server error" });
+        return;
+    }
+}));
+// Start Server
 app.listen(PORT, () => console.log(`Server running on http://localhost:${PORT}`));

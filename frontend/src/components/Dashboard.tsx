@@ -24,7 +24,16 @@ const Dashboard: React.FC = () => {
   return (
     <div>
       <h2>Dashboard</h2>
-      {user ? <p>Welcome, {user.username}!</p> : <p>Loading...</p>}
+      {user ? (
+        <>
+          <p>Welcome, {user.username}!</p>
+          <button onClick={() => navigate("/update-profile")}>
+            Update Profile
+          </button>
+        </>
+      ) : (
+        <p>Loading...</p>
+      )}
     </div>
   );
 };

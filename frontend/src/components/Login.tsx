@@ -18,12 +18,51 @@ const Login: React.FC = () => {
     else alert("Invalid credentials");
   };
 
+  const handleRegisterRedirect = () => {
+    navigate("/register");
+  };
+
   return (
-    <div>
-      <h2>Login</h2>
-      <input type="text" placeholder="Username" value={username} onChange={(e) => setUsername(e.target.value)} />
-      <input type="password" placeholder="Password" value={password} onChange={(e) => setPassword(e.target.value)} />
-      <button onClick={handleLogin}>Login</button>
+    <div className="flex justify-center items-center h-screen bg-gray-100">
+      <div className="w-full max-w-sm p-8 bg-white rounded-lg shadow-lg">
+        <h2 className="text-3xl font-semibold text-center mb-6 text-gray-800">Login</h2>
+
+        <div className="mb-4">
+          <input
+            type="text"
+            placeholder="Username"
+            value={username}
+            onChange={(e) => setUsername(e.target.value)}
+            className="w-full p-3 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+          />
+        </div>
+
+        <div className="mb-6">
+          <input
+            type="password"
+            placeholder="Password"
+            value={password}
+            onChange={(e) => setPassword(e.target.value)}
+            className="w-full p-3 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+          />
+        </div>
+
+        <button
+          onClick={handleLogin}
+          className="w-full p-3 bg-blue-500 text-white rounded-md hover:bg-blue-600 transition duration-300"
+        >
+          Login
+        </button>
+
+        <div className="mt-4 text-center">
+          <button
+            onClick={handleRegisterRedirect}
+            className="w-full p-3 bg-green-500 text-white rounded-md hover:bg-green-600 transition duration-300 mt-4"
+          >
+            Register
+          </button>
+        </div>
+      </div>
     </div>
   );
 };
