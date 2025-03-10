@@ -163,5 +163,24 @@ app.put("/update-profile", async (req: Request, res: Response) => {
      return;
   }
 });
+
+
+app.post("/logout", (req, res) => {
+  if (req.session) {
+    req.session.destroy((err) => {
+      if (err) {
+        res.status(500).json({ success: false, message: "Logout failed" });
+        return ;
+      } else {
+        res.json({ success: true, message: "Logged out successfully" });
+        return ;
+      }
+    });
+  } else {
+    res.status(400).json({ success: false, message: "No active session" });
+    return ;
+  }
+});
+
 // Start Server
 app.listen(PORT, () => console.log(`Server running on http://localhost:${PORT}`));
