@@ -2,10 +2,7 @@ import React, { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 
 interface User {
-  username: string;
-  email: string;
-  address: string;
-  province: string;
+  [key: string]: string; // Allows dynamic fields like real name, phone number, etc.
 }
 
 const Dashboard: React.FC = () => {
@@ -15,13 +12,18 @@ const Dashboard: React.FC = () => {
 
   useEffect(() => {
     const fetchUser = async () => {
-      const response = await fetch("http://localhost:5000/dashboard", {
-        credentials: "include",
-      });
-      const data = await response.json();
-      if (data.success) setUser(data.user);
-      else navigate("/");
+      try {
+        const response = await fetch("http://localhost:5000/dashboard", {
+          credentials: "include",
+        });
+        const data = await response.json();
+        if (data.success) setUser(data.user);
+        else navigate("/");
+      } catch (error) {
+        console.error("Error fetching user data:", error);
+      }
     };
+
     fetchUser();
   }, [navigate]);
 
@@ -38,30 +40,40 @@ const Dashboard: React.FC = () => {
 
     const selectedData: Partial<User> = {};
     selectedFields.forEach((field) => {
-      selectedData[field as keyof User] = user[field as keyof User];
+      selectedData[field] = user[field];
     });
 
-    const response = await fetch("https://external-api.com/receive-data", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(selectedData),
-    });
+    try {
+      const response = await fetch("https://external-api.com/receive-data", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(selectedData),
+      });
 
-    const data = await response.json();
-    alert(`Response: ${data.message}`);
+      const data = await response.json();
+      alert(`Response: ${data.message}`);
+    } catch (error) {
+      console.error("Error sending data:", error);
+      alert("Failed to send data.");
+    }
   };
 
   // Handle Logout
   const handleLogout = async () => {
-    const response = await fetch("http://localhost:5000/logout", {
-      method: "POST",
-      credentials: "include",
-    });
-    const data = await response.json();
-    if (data.success) {
-      navigate("/");
-    } else {
-      alert("Logout failed, please try again.");
+    try {
+      const response = await fetch("http://localhost:5000/logout", {
+        method: "POST",
+        credentials: "include",
+      });
+
+      const data = await response.json();
+      if (data.success) {
+        navigate("/");
+      } else {
+        alert("Logout failed, please try again.");
+      }
+    } catch (error) {
+      console.error("Error logging out:", error);
     }
   };
 
@@ -78,24 +90,26 @@ const Dashboard: React.FC = () => {
               Welcome, <span className="font-bold">{user.username}</span>!
             </p>
 
+            {/* Display only fields with values */}
             <div className="space-y-3">
-              {/* Checkbox List */}
-              {["username", "email", "address", "province"].map((field) => (
-                <label
-                  key={field}
-                  className="flex items-center space-x-2 bg-gray-100 p-2 rounded-lg cursor-pointer hover:bg-gray-200 transition"
-                >
-                  <input
-                    type="checkbox"
-                    checked={selectedFields.includes(field)}
-                    onChange={() => handleCheckboxChange(field)}
-                    className="w-5 h-5 text-blue-500"
-                  />
-                  <span className="capitalize text-gray-700">
-                    {field}: {user[field as keyof User]}
-                  </span>
-                </label>
-              ))}
+              {Object.entries(user)
+                .filter(([_, value]) => value) // Show only non-empty fields
+                .map(([field, value]) => (
+                  <label
+                    key={field}
+                    className="flex items-center space-x-2 bg-gray-100 p-2 rounded-lg cursor-pointer hover:bg-gray-200 transition"
+                  >
+                    <input
+                      type="checkbox"
+                      checked={selectedFields.includes(field)}
+                      onChange={() => handleCheckboxChange(field)}
+                      className="w-5 h-5 text-blue-500"
+                    />
+                    <span className="text-gray-700">
+                      {field}: {value}
+                    </span>
+                  </label>
+                ))}
             </div>
 
             {/* Buttons Container */}
@@ -116,6 +130,14 @@ const Dashboard: React.FC = () => {
                 Update Profile
               </button>
 
+              {/* Navigate to Add Profile Page */}
+              <button
+                onClick={() => navigate("/add-profile")}
+                className="w-full bg-green-500 text-white px-4 py-2 rounded-lg hover:bg-green-600 transition"
+              >
+                Add Profile Info
+              </button>
+
               {/* Logout Button */}
               <button
                 onClick={handleLogout}
@@ -133,4 +155,4 @@ const Dashboard: React.FC = () => {
   );
 };
 
-export default Dashboard
+export default Dashboard;

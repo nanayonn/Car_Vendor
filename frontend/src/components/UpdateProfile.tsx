@@ -4,15 +4,8 @@ import { useNavigate } from "react-router-dom";
 const UpdateProfile: React.FC = () => {
   const navigate = useNavigate();
 
-  const [formData, setFormData] = useState({
-    email: "",
-    address: "",
-    province: "",
-    newUsername: "",
-    newPassword: "",
-    oldPassword: "",
-  });
-
+  // Initialize form data with empty values
+  const [formData, setFormData] = useState<any>({});
   const [error, setError] = useState<string>("");
 
   useEffect(() => {
@@ -22,17 +15,19 @@ const UpdateProfile: React.FC = () => {
       });
       const data = await response.json();
       if (!data.success) {
-        navigate("/");
+        navigate("/"); // Redirect if user is not logged in or session expired
       } else {
-        const { email, address, province, username } = data.user;
-        setFormData({
-          email,
-          address: address || "",
-          province: province || "",
-          newUsername: "",
-          newPassword: "",
-          oldPassword: "",
+        const user = data.user;
+        // Dynamically populate formData with user data
+        const fields = Object.keys(user); // Get all field names from user object
+        let updatedFormData: any = {};
+        fields.forEach((field) => {
+          // Add fields only if they have a value
+          if (user[field]) {
+            updatedFormData[field] = user[field];
+          }
         });
+        setFormData(updatedFormData);
       }
     };
     fetchUserData();
@@ -40,7 +35,7 @@ const UpdateProfile: React.FC = () => {
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const { name, value } = e.target;
-    setFormData((prevData) => ({ ...prevData, [name]: value }));
+    setFormData((prevData: any) => ({ ...prevData, [name]: value }));
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -53,18 +48,16 @@ const UpdateProfile: React.FC = () => {
     });
     const data = await response.json();
     if (data.success) {
-
-    const response = await fetch("http://localhost:5000/logout", {
-      method: "POST",
-      credentials: "include",
-    });
-    const data = await response.json();
-    if (data.success) {
-      navigate("/");
-    }
-    
-   } else {
-      setError(data.message);
+      const logoutResponse = await fetch("http://localhost:5000/logout", {
+        method: "POST",
+        credentials: "include",
+      });
+      const logoutData = await logoutResponse.json();
+      if (logoutData.success) {
+        navigate("/"); // Redirect to home or login page after successful update and logout
+      }
+    } else {
+      setError(data.message); // Set error message from response
     }
   };
 
@@ -78,42 +71,28 @@ const UpdateProfile: React.FC = () => {
         {error && <p className="text-red-500 text-center mb-3">{error}</p>}
 
         <form onSubmit={handleSubmit} className="space-y-4">
-          <div className="flex flex-col">
-            <label className="text-gray-700">Email:</label>
-            <input
-              type="email"
-              name="email"
-              value={formData.email}
-              onChange={handleChange}
-              className="border rounded-lg px-3 py-2"
-            />
-          </div>
-          <div className="flex flex-col">
-            <label className="text-gray-700">Address:</label>
-            <input
-              type="text"
-              name="address"
-              value={formData.address}
-              onChange={handleChange}
-              className="border rounded-lg px-3 py-2"
-            />
-          </div>
-          <div className="flex flex-col">
-            <label className="text-gray-700">Province:</label>
-            <input
-              type="text"
-              name="province"
-              value={formData.province}
-              onChange={handleChange}
-              className="border rounded-lg px-3 py-2"
-            />
-          </div>
+          {Object.keys(formData).map((key) => (
+            key !== "username" && key !== "password" && (
+              <div key={key} className="flex flex-col">
+                <label className="text-gray-700 capitalize">{key}:</label>
+                <input
+                  type="text"
+                  name={key}
+                  value={formData[key]}
+                  onChange={handleChange}
+                  className="border rounded-lg px-3 py-2"
+                />
+              </div>
+            )
+          ))}
+          
+          {/* Fields for changing username and password */}
           <div className="flex flex-col">
             <label className="text-gray-700">New Username:</label>
             <input
               type="text"
               name="newUsername"
-              value={formData.newUsername}
+              value={formData.newUsername || ""}
               onChange={handleChange}
               className="border rounded-lg px-3 py-2"
             />
@@ -123,7 +102,7 @@ const UpdateProfile: React.FC = () => {
             <input
               type="password"
               name="oldPassword"
-              value={formData.oldPassword}
+              value={formData.oldPassword || ""}
               onChange={handleChange}
               className="border rounded-lg px-3 py-2"
             />
@@ -133,7 +112,7 @@ const UpdateProfile: React.FC = () => {
             <input
               type="password"
               name="newPassword"
-              value={formData.newPassword}
+              value={formData.newPassword || ""}
               onChange={handleChange}
               className="border rounded-lg px-3 py-2"
             />
@@ -148,7 +127,6 @@ const UpdateProfile: React.FC = () => {
               Update
             </button>
 
-            {/* Navigate Back to Dashboard */}
             <button
               type="button"
               onClick={() => navigate("/dashboard")}

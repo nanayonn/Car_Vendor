@@ -89,7 +89,10 @@ app.post("/login", async (req: Request, res: Response) => {
 app.get("/dashboard", async (req: Request, res: Response) => {
   if (req.session.user) {
     try {
-      const user = await User.findById(req.session.user.id).select("username email address province");
+      const user = await User.findById(req.session.user.id)
+        .select("-_id username email address province") // Explicitly exclude _id
+        .lean(); // Use lean to return plain JavaScript objects
+
       if (user) {
         res.json({ success: true, user });
       } else {
@@ -182,5 +185,69 @@ app.post("/logout", (req, res) => {
   }
 });
 
+app.get("/available-profile-fields", async (req: Request, res: Response) => {
+  if (!req.session.user) {
+     res.status(401).json({ success: false, message: "Unauthorized" });
+     return ;  
+    }
+
+  try {
+    // Find the user and select the relevant fields (email, address, province)
+    const user = req.session.user ? await User.findById(req.session.user.id).select("email address province") : null;
+
+    if (!user) {
+       res.status(404).json({ success: false, message: "User not found" });
+    }
+
+    // List of fields defined in the userSchema
+    const allFields = ["email", "address", "province"];
+
+    // Filter out fields that already have values
+    const missingFields = allFields.filter((field) => !(user as any)[field]);
+
+    // Return the missing fields (those without values)
+    res.json({ success: true, availableFields: missingFields });
+  } catch (err) {
+    res.status(500).json({ success: false, message: "Server error" });
+  }
+});
+app.post("/add-profile", async (req: Request, res: Response) => {
+  if (!req.session.user) {
+     res.status(401).json({ success: false, message: "Unauthorized" });
+  return ;}
+
+  try {
+    const { additionalFields } = req.body; // Contains the selected field and its value
+
+    // Validate that the additionalFields object is provided
+    if (!additionalFields || typeof additionalFields !== "object" || Object.keys(additionalFields).length === 0) {
+       res.status(400).json({ success: false, message: "No field data provided" });
+    return ;}
+
+    const user = await User.findById(req.session.user.id);
+    if (!user) {
+       res.status(404).json({ success: false, message: "User not found" });
+      return ;}
+
+    // Update the user profile with the provided field(s)
+    const fieldKey = Object.keys(additionalFields)[0]; // Get the first (and only) field in the object
+    const fieldValue = additionalFields[fieldKey];
+
+    // Check if the field is valid (email, address, or province)
+    if (!["email", "address", "province"].includes(fieldKey)) {
+       res.status(400).json({ success: false, message: "Invalid field" });
+    return ;}
+
+    // Update the user's profile with the new field value
+    (user as any)[fieldKey] = fieldValue;
+
+    // Save the updated user
+    await user.save();
+
+    res.json({ success: true, message: `${fieldKey} updated successfully` });
+  } catch (err) {
+    res.status(500).json({ success: false, message: "Server error" });
+  }
+});
 // Start Server
 app.listen(PORT, () => console.log(`Server running on http://localhost:${PORT}`));

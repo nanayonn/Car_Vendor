@@ -4,6 +4,7 @@ import Login from "./components/Login";
 import Register from "./components/Register";
 import Dashboard from "./components/Dashboard";
 import UpdateProfile from "./components/UpdateProfile";
+import AddProfile from "./components/AddProfile";
 
 const App: React.FC = () => {
   return (
@@ -13,6 +14,7 @@ const App: React.FC = () => {
         <Route path="/register" element={<Register />} />
         <Route path="/dashboard" element={<Dashboard />} />
         <Route path="/update-profile" element={<UpdateProfile />}/>
+        <Route path="/add-profile" element={<AddProfile />}/>
       </Routes>
     </Router>
   );
